@@ -9,7 +9,7 @@ bp = Blueprint('destination', __name__, url_prefix='/destinations')
 
 @bp.route('/<id>')
 def show(id):
-    destination = Destination.query.filter_by(id=id).first()
+    destination = db.session.execute(db.select(Destination).filter_by(id=id)).scalar_one()
     # create the comment form
     cform = CommentForm()    
     return render_template('destinations/show.html', destination=destination, form=cform)
@@ -46,23 +46,15 @@ def check_upload_file(form):
   fp.save(upload_path)
   return db_upload_path
 
-@bp.route('/<destination>/comment', methods = ['GET', 'POST'])  
-def comment(destination):  
-    form = CommentForm()  
-    #get the destination object associated to the page and the comment
-    destination_obj = Destination.query.filter_by(id=destination).first()  
-    if form.validate_on_submit():  
-      #read the comment from the form
-      comment = Comment(text=form.text.data,  
-                        destination=destination_obj) 
-      #here the back-referencing works - comment.destination is set
-      # and the link is created
-      db.session.add(comment) 
-      db.session.commit() 
-
-      #flashing a message which needs to be handled by the html
-      #flash('Your comment has been added', 'success')  
-      print('Your comment has been added', 'success') 
+@bp.route('/<id>/comment', methods=['GET','POST'])
+def comment(id):
+    form = CommentForm()
+    destination = db.session.execute(db.select(Destination).filter_by(id = id)).scalar_one()
+    if form.validate_on_submit():
+        comment = Comment(text = form.text.data, destination_id = destination.id)
+        db.session.add(comment) 
+        db.session.commit()
+        flash('Your comment has been added', 'success')
     # using redirect sends a GET request to destination.show
-    return redirect(url_for('destination.show', id=destination))
+    return redirect(url_for('destinations.show',id = id))
     
